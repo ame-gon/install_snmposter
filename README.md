@@ -118,6 +118,7 @@ amegon@test:~ $
         - `systemctl restart network` コマンドでネットワークを再起動する
 - 以下のコマンドで仮想環境を無効にする
     - `deactivate`
+        - 前項で OS を再起動した場合には本手順は不要
 - 以下のディレクトリを配下を含めて削除する
     - /snmposter
 
