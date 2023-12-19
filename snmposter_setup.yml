@@ -1,0 +1,107 @@
+# python2 環境で snmposter を実行できる環境を作成する Playbook
+# 
+# 実行コマンド
+# ansible-playbook snmposter_setup.yml -i hostlist
+# 
+- name: 疎通確認
+  hosts: snmposter_hosts
+  become: yes
+  tasks:
+    - name: ssh_ping
+      ping:
+
+- name: 必要モジュールのインストール
+  hosts: snmposter_hosts
+  become: yes
+  tasks:
+    - name: python2-devel をインストールする
+      ansible.builtin.dnf:
+        name: python2-devel
+        state: present
+      become: yes
+    - name: gcc をインストールする
+      ansible.builtin.dnf:
+        name: gcc
+        state: present
+      become: yes
+    - name: wget をインストールする
+      ansible.builtin.dnf:
+        name: wget
+        state: present
+      become: yes
+    - name: tar をインストールする
+      ansible.builtin.dnf:
+        name: tar
+        state: present
+      become: yes
+
+# 参考
+# 以下の方法のようにすると python3 のライブラリ配下に virtualenv がインストールされてしまう。
+#- name: 必要モジュールのインストール
+#  hosts: snmposter
+#  become: yes
+#  tasks:
+#    - name: virtualenv をインストールする
+#      ansible.builtin.pip:
+#        name: virtualenv
+#        state: present
+- name: 必要モジュールのインストール
+  hosts: snmposter_hosts
+  become: yes
+  tasks:
+  - name: virtualenv を pip2 でインストール
+    ansible.builtin.pip:
+      name: virtualenv
+      executable: pip2
+  - name: virtualenv で snmposter 実行環境を作成
+    ansible.builtin.command: virtualenv /snmposter
+  - name: TwistedSNMP をダウンロードする
+    ansible.builtin.get_url:
+      dest: /tmp/TwistedSNMP-0.3.13.tar.gz
+      url: http://downloads.sourceforge.net/project/twistedsnmp/twistedsnmp/0.3.13/TwistedSNMP-0.3.13.tar.gz
+  - name: pysnmp をダウンロードする
+    ansible.builtin.get_url:
+      dest: /tmp/pysnmp-se-3.5.2.tar.gz
+      url: http://downloads.sourceforge.net/project/twistedsnmp/pysnmp-se/3.5.2/pysnmp-se-3.5.2.tar.gz
+  - name: TwistedSNMP を virtualenv /snmposter/ にインストール
+    ansible.builtin.pip:
+      name: file:///tmp/TwistedSNMP-0.3.13.tar.gz
+      virtualenv: /snmposter/
+  - name: pysnmp を virtualenv /snmposter/ にインストール
+    ansible.builtin.pip:
+      name: file:///tmp/pysnmp-se-3.5.2.tar.gz
+      virtualenv: /snmposter/
+  - name: snmposter を virtualenv /snmposter/ にインストール
+    ansible.builtin.pip:
+      name: snmposter
+      virtualenv: /snmposter/
+
+- name: 不要ファイルの削除
+  hosts: snmposter_hosts
+  become: yes
+  tasks:
+  - name: ダウンロードした TwistedSNMP の削除
+    ansible.builtin.file:
+      path: /tmp/TwistedSNMP-0.3.13.tar.gz
+      state: absent
+  - name: ダウンロードした pysnmp の削除
+    ansible.builtin.file:
+      path: /tmp/pysnmp-se-3.5.2.tar.gz
+      state: absent
+
+- name: snmposter 実行用サンプルファイルのコピー
+  hosts: snmposter_hosts
+  become: yes
+  tasks:
+  - name: ディレクトリの作成 (/snmposter/snmp_files)
+    ansible.builtin.file:
+      path: /snmposter/snmp_files
+      state: directory
+  - name: エージェント定義ファイルのコピー
+    ansible.builtin.copy:
+      src: files/agents_org.csv
+      dest: /snmposter/snmp_files/agents_org.csv
+  - name: snmp walk データのコピー
+    ansible.builtin.copy:
+      src: files/sample_snmp.txt
+      dest: /snmposter/snmp_files/sample_snmp.txt
